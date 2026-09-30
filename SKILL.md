@@ -26,6 +26,10 @@ The skill is optimized for branded pill-style emoji:
 - optional brand mark on the left;
 - Bot API publishing to `custom_emoji` sticker sets.
 
+## Image mosaics
+
+For any image rendered as an inline custom-emoji mosaic, including the Human20 mascot, load [image mosaics](references/image-mosaics.md). Use `scripts/mosaic.py` for proportional preparation, transparent row padding and UTF-16 composition; reuse `assets/human20-mosaic.json` for the accepted mascot. Actual mobile appearance, not API success, proves visual completion. No automatic public publication.
+
 ## Brand assets
 
 By default this public version uses the Human 2.0 public brand assets:
