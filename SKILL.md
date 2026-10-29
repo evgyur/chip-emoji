@@ -28,7 +28,7 @@ The skill is optimized for branded pill-style emoji:
 
 ## Image mosaics
 
-For any image rendered as an inline custom-emoji mosaic, including the Human20 mascot, load [image mosaics](references/image-mosaics.md). Use `scripts/mosaic.py` for proportional preparation, transparent row padding and UTF-16 composition; reuse `assets/human20-mosaic.json` for the accepted mascot. Actual mobile appearance, not API success, proves visual completion. No automatic public publication.
+For any image rendered as an inline custom-emoji mosaic, including the Human20 mascot, load [image mosaics](references/image-mosaics.md). Use `scripts/mosaic.py` for proportional preparation, transparent row padding and UTF-16 composition; reuse `assets/human20-mosaic.json` for the accepted mascot. Actual mobile appearance, not API success, proves visual completion. No automatic public publication. For slow assembly that must stay complete, prefer static tiles and staged edits of the same message via `reveal-frames`; never assume independent video emoji finish together.
 
 ## Brand assets
 
@@ -173,3 +173,17 @@ For phrases:
 - white pill backing;
 - optional mark on the left;
 - dark text `#2C2C2C`.
+
+## Output Contract
+
+Return the chosen workflow, local preview, verified pack link and ordered live emoji IDs. For an authorized send/edit, return the exact message/reply readback and distinguish asset/server verification from client visual acceptance. Offline preparation does not publish anything.
+
+## Quick Test Checklist
+
+- Run `python3 scripts/test_mosaic.py`: preparation/composition compatibility, Unicode offsets, deterministic staged frames and negative inputs.
+- Require zero blank IDs and ordinary full-compose equality in the final reveal frame.
+- A preview request must not send; partial video playback must not be called complete from API success.
+
+## Done Criteria
+
+The requested assets/payloads are verified, existing interfaces remain compatible, and any authorized publication or message edit has exact readback. Client appearance is claimed only when observed or confirmed; unresolved limitations are explicit.

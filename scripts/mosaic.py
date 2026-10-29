@@ -1,5 +1,5 @@
 """Offline mosaic preparation / post composition; no network writes."""
-import argparse,json,subprocess
+import argparse,hashlib,json,subprocess
 from pathlib import Path
 
 def units(s): return len(s.encode('utf-16-le'))//2
@@ -18,6 +18,23 @@ def compose(m,before='',after='',entities=None):
     if after:text+='\n'+after
     if units(text)>4096:raise ValueError('Split explicitly; never truncate')
     return {'text':text,'entities':out}
+
+def reveal_frames(m,blank_id,steps=6,before='',after='',entities=None,seed='mosaic-reveal'):
+    """Build offline payloads; the caller owns authorization, edits and readback."""
+    compose(m,before,after,entities)  # Reuse geometry, ID, UTF-16 and length checks.
+    ids=m['emoji_ids'];n=len(ids);blank_id=str(blank_id)
+    if not blank_id.isdigit() or blank_id in [str(x) for x in ids]:
+        raise ValueError('Use a separate published static blank emoji ID')
+    if isinstance(steps,bool) or not isinstance(steps,int) or not 1<=steps<=n:
+        raise ValueError('Steps must be between one and tile count')
+    order=sorted(range(n),key=lambda i:hashlib.sha256((str(seed)+':'+str(i)).encode()).digest())
+    rank={index:position for position,index in enumerate(order)}
+    frames=[]
+    for step in range(1,steps+1):
+        visible=(n*step+steps-1)//steps
+        frame=dict(m);frame['emoji_ids']=[str(eid) if rank[i]<visible else blank_id for i,eid in enumerate(ids)]
+        frames.append({'visible_tiles':visible,'complete':visible==n,'payload':compose(frame,before,after,entities)})
+    return frames
 
 def prepare(source,output,cols=9,rows=11,step=80,margin=20):
     if not 1<=cols<=9 or rows<1 or cols*rows>200 or not 1<=step<=100:raise ValueError('Invalid geometry')
@@ -45,8 +62,12 @@ def main():
     a=s.add_parser('prepare');a.add_argument('source');a.add_argument('output')
     a.add_argument('--columns',type=int,default=9);a.add_argument('--rows',type=int,default=11);a.add_argument('--content-height',type=int,default=80);a.add_argument('--margin',type=int,default=20)
     c=s.add_parser('compose');c.add_argument('manifest');c.add_argument('output');c.add_argument('--before-file');c.add_argument('--after-file');c.add_argument('--entities-file')
+    r=s.add_parser('reveal-frames');r.add_argument('manifest');r.add_argument('output');r.add_argument('--blank-id',required=True);r.add_argument('--steps',type=int,default=6);r.add_argument('--seed',default='mosaic-reveal');r.add_argument('--before-file');r.add_argument('--after-file');r.add_argument('--entities-file')
     x=p.parse_args();read=lambda f:Path(f).read_text() if f else ''
     if x.command=='prepare':print(json.dumps(prepare(x.source,x.output,x.columns,x.rows,x.content_height,x.margin)))
+    elif x.command=='reveal-frames':
+        frames=reveal_frames(json.loads(read(x.manifest)),x.blank_id,x.steps,read(x.before_file),read(x.after_file),json.loads(read(x.entities_file)) if x.entities_file else [],x.seed)
+        Path(x.output).write_text(json.dumps({'frames':frames,'network_writes':False},ensure_ascii=False,indent=2));print('frames',len(frames),'final_tiles',frames[-1]['visible_tiles'])
     else:
         r=compose(json.loads(read(x.manifest)),read(x.before_file),read(x.after_file),json.loads(read(x.entities_file)) if x.entities_file else [])
         Path(x.output).write_text(json.dumps(r,ensure_ascii=False,indent=2));print('entities',len(r['entities']))

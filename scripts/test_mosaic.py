@@ -24,4 +24,27 @@ class Tests(unittest.TestCase):
         with self.assertRaises(ValueError):m.compose(self.manifest,'x'*4096)
     def test_bad_geometry(self):
         with self.assertRaises(ValueError):m.prepare('missing','unused',cols=10)
+    def test_reveal_final_is_full_and_deterministic(self):
+        frames=m.reveal_frames(self.manifest,'999999999999999999',steps=6)
+        self.assertEqual(frames,m.reveal_frames(self.manifest,'999999999999999999',steps=6))
+        self.assertEqual([f['visible_tiles'] for f in frames],[17,33,50,66,83,99])
+        self.assertTrue(frames[-1]['complete']);self.assertFalse(frames[0]['complete'])
+        self.assertEqual(frames[-1]['payload'],m.compose(self.manifest))
+        previous=set()
+        for f in frames:
+            actual={i for i,e in enumerate(f['payload']['entities']) if e['custom_emoji_id']!='999999999999999999'}
+            self.assertTrue(previous<=actual);self.assertEqual(len(actual),f['visible_tiles']);previous=actual
+    def test_reveal_preserves_geometry_and_rich_unicode_prefix(self):
+        prefix='🧩 Start';entity={'type':'bold','offset':3,'length':5}
+        for f in m.reveal_frames(self.manifest,'999999999999999999',before=prefix,after='Tail',entities=[entity]):
+            payload=f['payload'];self.assertEqual(payload['entities'][0],entity)
+            self.assertEqual(payload['entities'][1]['offset'],m.units(prefix+'\n\u200b'))
+            self.assertTrue(payload['text'].endswith('\nTail'))
+            self.assertEqual(len(payload['entities']),100)
+    def test_reveal_rejects_unsafe_or_incomplete_inputs(self):
+        for blank in ['bad',self.manifest['emoji_ids'][0]]:
+            with self.assertRaises(ValueError):m.reveal_frames(self.manifest,blank)
+        for steps in [0,100,True]:
+            with self.assertRaises(ValueError):m.reveal_frames(self.manifest,'999999999999999999',steps=steps)
+        with self.assertRaises(ValueError):m.reveal_frames({**self.manifest,'emoji_ids':[]},'999999999999999999')
 if __name__=='__main__':unittest.main()
